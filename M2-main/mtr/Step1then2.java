@@ -26,9 +26,10 @@ public class Step1then2 {
     if (arg.length!=0) {
       regEx = arg[0];
     } else {
-      Scanner scanner = new Scanner(System.in);
-      System.out.print("  >> Please enter a regEx: ");
-      regEx = scanner.next();
+      try (Scanner scanner = new Scanner(System.in)) {
+        System.out.print("  >> Please enter a regEx: ");
+        regEx = scanner.next();
+      }
     }
     System.out.println("  >> Parsing regEx \""+regEx+"\".");
     System.out.println("  >> ...");
@@ -57,12 +58,6 @@ public class Step1then2 {
 
   //FROM REGEX TO SYNTAX TREE
   private static RegExTree parse() throws Exception {
-    //BEGIN DEBUG: set conditionnal to true for debug example
-    if (false) throw new Exception();
-    RegExTree example = exampleAhoUllman();
-    if (false) return example;
-    //END DEBUG
-
     ArrayList<RegExTree> result = new ArrayList<RegExTree>();
     for (int i=0;i<regEx.length();i++) result.add(new RegExTree(charToRoot(regEx.charAt(i)),new ArrayList<RegExTree>()));
     
@@ -210,6 +205,7 @@ public class Step1then2 {
   
   //EXAMPLE
   // --> RegEx from Aho-Ullman book Chap.10 Example 10.25
+  @SuppressWarnings("unused")
   private static RegExTree exampleAhoUllman() {
     RegExTree a = new RegExTree((int)'a', new ArrayList<RegExTree>());
     RegExTree b = new RegExTree((int)'b', new ArrayList<RegExTree>());
@@ -226,6 +222,7 @@ public class Step1then2 {
     subTrees.add(dotBCEtoile);
     return new RegExTree(ALTERN, subTrees);
   }
+  @SuppressWarnings("unchecked")
   private static NDFAutomaton step2_AhoUllman(RegExTree ret) {
     
     if (ret.subTrees.isEmpty()) {
@@ -344,10 +341,10 @@ class RegExTree {
     return result+")";
   }
   private String rootToString() {
-    if (root==Step1_then2.CONCAT) return ".";
-    if (root==Step1_then2.ETOILE) return "*";
-    if (root==Step1_then2.ALTERN) return "|";
-    if (root==Step1_then2.DOT) return ".";
+    if (root==Step1then2.CONCAT) return ".";
+    if (root==Step1then2.ETOILE) return "*";
+    if (root==Step1then2.ALTERN) return "|";
+    if (root==Step1then2.DOT) return ".";
     return Character.toString((char)root);
   }
 }
