@@ -1,0 +1,85 @@
+EXPLICATION DU CODE EgrepV1.java
+================================
+
+1. EN-TÊTE ET CONSTANTES (lignes 1-3)
+-------------------------------------
+Les constantes (C, E, A, P, PO, PF, D, PL) sont des entiers qui représentent les opérateurs dans l'arbre de syntaxe de la regex :
+- C  = concaténation
+- E  = étoile (*)
+- A  = alternative (|)
+- P  = protection (parenthèses)
+- PO = parenthèse ouvrante (
+- PF = parenthèse fermante )
+- D  = point (.)
+- PL = plus (+)
+
+regEx contient la chaîne regex passée en argument.
+
+
+2. MAIN (lignes 4-11)
+--------------------
+Vérifie qu'il y a au moins un argument (la regex). Stocke la regex dans regEx. Enchaîne : parse() donne l'arbre, step2() le NDFA, step3() le DFA, step4() le DFA minimisé. Si un fichier est fourni on appelle searchFile, sinon searchStream sur l'entrée standard. Toute exception fait quitter le programme.
+
+
+3. PARSE : DE LA CHAÎNE REGEX À L'ARBRE (lignes 12-37)
+------------------------------------------------------
+
+parse() sans argument : crée une liste L avec un RegExTree par caractère de la regex. Chaque caractère est converti avec ch(). Puis appelle parse(L) pour réduire la liste en un seul arbre.
+
+ch(c) : retourne l'entier associé à chaque caractère (opérateurs -> constantes, sinon code du caractère).
+
+parse(L) : réduit la liste en appliquant dans l'ordre : paren(L) pour les parenthèses, op(L,E) pour *, op(L,PL) pour +, cat(L) pour la concaténation, alt(L) pour |. À la fin il ne reste qu'un élément ; unprot(...) enlève les nœuds de protection.
+
+Fonctions du parse :
+- has(L, r) : vrai s'il existe un nœud de type r sans fils.
+- hasCat(L) : vrai s'il y a deux opérandes côte à côte à concaténer.
+- paren(L) : trouve ), remonte jusqu'à (, extrait le contenu, le parse, remplace par un nœud P.
+- op(L, op) : pour E ou PL, prend l'élément à gauche et crée un nœud (op, [fils]).
+- cat(L) : remplace deux éléments consécutifs par CONCAT(gauche, droite).
+- alt(L) : remplace gauche | droite par ALTERN(gauche, droite).
+- unprot(t) : enlève les nœuds P en gardant uniquement leur fils.
+
+
+4. STEP2 : DE L'ARBRE AU NDFA (lignes 38-43)
+---------------------------------------------
+On construit un automate fini non déterministe avec des epsilon-transitions.
+
+- Feuille (caractère ou .) : 2 états, une transition sur le caractère (ou tous pour .).
+- CONCAT : on enchaîne le NDFA du fils gauche et du fils droit par une epsilon.
+- ALTERN : nouvel état initial avec deux epsilon vers les deux branches ; les deux sorties vont vers un nouvel état final.
+- ETOILE ou PLUS : boucle avec epsilon ; pour PLUS, pas d'epsilon direct initial vers final (au moins une fois le fils).
+
+Les tableaux tt (transitions) et et (epsilon) sont fusionnés avec décalage des indices d'états.
+
+
+5. STEP3 : NDFA VERS DFA (lignes 44-49)
+---------------------------------------
+eps(n, S) : calcule la epsilon-clôture de l'ensemble d'états S.
+
+Construction par sous-ensembles : état initial du DFA = epsilon-clôture de 0. Pour chaque état DFA (ensemble S) et chaque caractère c, on calcule les états NDFA atteignables depuis S en lisant c, puis leur epsilon-clôture ; c'est un nouvel état DFA (ou un déjà vu). Un état DFA est acceptant si l'ensemble contient l'état final du NDFA. À la fin on remplit la table de transition du DFA et acceptingStates.
+
+
+6. STEP4 : MINIMISATION DU DFA (lignes 50-54)
+---------------------------------------------
+Partition initiale : un bloc pour les états acceptants, un pour les non acceptants. On affine : on sépare deux états s'ils ne mènent pas au même bloc pour un même caractère. On répète jusqu'à stabilisation. On construit le nouveau DFA (un état par bloc) et on réordonne pour que l'état initial soit 0.
+
+
+7. RECHERCHE (lignes 55-57)
+---------------------------
+searchFile(d, path) : ouvre le fichier, appelle searchStream, ferme.
+
+searchStream(d, r) : pour chaque ligne, si l'état 0 du DFA est acceptant on affiche la ligne ; sinon pour chaque position i on appelle match(d, line, i) ; dès qu'un match est trouvé on affiche la ligne et on passe à la suivante.
+
+match(d, s, start) : part de l'état 0 du DFA et lit s[start], s[start+1], etc. Retourne true si un état acceptant est atteint (sous-chaîne reconnue). Les caractères >= 256 sont traités comme non correspondants.
+
+
+8. CLASSES UTILITAIRES (lignes 59-61)
+-------------------------------------
+RegExTree : root (opérateur ou caractère), subTrees (liste des fils).
+NDFAutomaton : transitionTable, epsilonTransitionTable.
+DFAutomaton : transitionTable, acceptingStates.
+
+
+RÉSUMÉ EN UNE PHRASE
+---------------------
+Le code parse la regex en arbre, construit un NDFA (step2), le déterministe (step3), minimise le DFA (step4), puis pour chaque ligne du fichier simule le DFA à chaque position pour afficher les lignes qui contiennent le motif.
